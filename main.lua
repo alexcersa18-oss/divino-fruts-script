@@ -1,5 +1,5 @@
--- MAIN - Divino Fruts Script
--- Aimbot + ESP com interface Red-Z Hub Style
+-- MAIN - Divino Fruts Script v2.0
+-- Interface Flutuante com Abas + Aimbot Teleguiado + Habilidades Delegadas
 
 print("[⚔️ DIVINO FRUTS] Script iniciando...")
 
@@ -13,206 +13,477 @@ local mouse = player:GetMouse()
 
 -- ==================== CONFIGURAÇÕES ====================
 local Config = {
-    Enabled = true,
     AimbotEnabled = true,
+    AimbotRange = 100,
     ESPEnabled = true,
-    Platform = "PC", -- "PC" ou "MOBILE"
-    AimbotSensitivity = 0.5,
-    ESPDistance = 100,
-    UIScale = 1,
+    ESPRange = 150,
+    SelectedTab = "aimbot",
+    GuiVisible = true,
+    TargetPlayer = nil,
 }
 
--- ==================== DETECÇÃO DE PLATAFORMA ====================
-local function detectPlatform()
-    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
-        return "MOBILE"
-    else
-        return "PC"
-    end
-end
+local AbilityKeys = {
+    Z = {enabled = true, name = "Habilidade Z"},
+    X = {enabled = true, name = "Habilidade X"},
+    C = {enabled = true, name = "Habilidade C"},
+    V = {enabled = true, name = "Habilidade V"},
+    F = {enabled = true, name = "Habilidade F"},
+}
 
--- Detectar automaticamente ou permitir mudança manual
-Config.Platform = detectPlatform()
-print("[⚔️ DIVINO FRUTS] Plataforma detectada: " .. Config.Platform)
-
--- ==================== CRIAR INTERFACE ====================
+-- ==================== CRIAR INTERFACE FLUTUANTE ====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "DivinoFrutsGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 300, 0, 400)
-MainFrame.Position = UDim2.new(0, 10, 0, 10)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 100)
-MainFrame.Parent = ScreenGui
-MainFrame.Visible = true
+-- Container Principal
+local MainContainer = Instance.new("Frame")
+MainContainer.Name = "MainContainer"
+MainContainer.Size = UDim2.new(0, 350, 0, 450)
+MainContainer.Position = UDim2.new(0.5, -175, 0.5, -225)
+MainContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+MainContainer.BorderSizePixel = 0
+MainContainer.Parent = ScreenGui
 
--- Header
-local Header = Instance.new("TextLabel")
+-- Adicionar UICorner para cantos arredondados
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainContainer
+
+-- ==================== DRAG & DROP ====================
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+MainContainer.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = mouse.X
+        startPos = MainContainer.Position
+    end
+end)
+
+MainContainer.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input, gameProcessed)
+    if dragging and dragStart then
+        local delta = mouse.X - dragStart
+        MainContainer.Position = startPos + UDim2.new(0, delta, 0, 0)
+    end
+end)
+
+-- ==================== HEADER ====================
+local Header = Instance.new("Frame")
 Header.Name = "Header"
 Header.Size = UDim2.new(1, 0, 0, 50)
 Header.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
-Header.TextColor3 = Color3.fromRGB(255, 255, 255)
-Header.TextSize = 18
-Header.Font = Enum.Font.GothamBold
-Header.Text = "⚔️ DIVINO FRUTS"
-Header.Parent = MainFrame
+Header.BorderSizePixel = 0
+Header.Parent = MainContainer
 
--- Close Button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Name = "CloseBtn"
-CloseBtn.Size = UDim2.new(0, 40, 0, 40)
-CloseBtn.Position = UDim2.new(1, -45, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 20
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "✕"
-CloseBtn.Parent = Header
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 8)
+HeaderCorner.Parent = Header
 
--- Info Label
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Name = "InfoLabel"
-InfoLabel.Size = UDim2.new(1, -20, 0, 30)
-InfoLabel.Position = UDim2.new(0, 10, 0, 60)
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-InfoLabel.TextSize = 14
-InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.Text = "📱 Plataforma: " .. Config.Platform
-InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-InfoLabel.Parent = MainFrame
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.Text = "⚔️ DIVINO FRUTS"
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextScaled = false
+Title.Parent = Header
 
--- Toggle Aimbot
-local AimbotLabel = Instance.new("TextLabel")
-AimbotLabel.Name = "AimbotLabel"
-AimbotLabel.Size = UDim2.new(0, 200, 0, 30)
-AimbotLabel.Position = UDim2.new(0, 10, 0, 100)
-AimbotLabel.BackgroundTransparency = 1
-AimbotLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimbotLabel.TextSize = 14
-AimbotLabel.Font = Enum.Font.Gotham
-AimbotLabel.Text = "⚔️ Aimbot"
-AimbotLabel.TextXAlignment = Enum.TextXAlignment.Left
-AimbotLabel.Parent = MainFrame
+local TitlePadding = Instance.new("UIPadding")
+TitlePadding.PaddingLeft = UDim.new(0, 15)
+TitlePadding.Parent = Title
 
-local AimbotToggle = Instance.new("TextButton")
-AimbotToggle.Name = "AimbotToggle"
-AimbotToggle.Size = UDim2.new(0, 60, 0, 25)
-AimbotToggle.Position = UDim2.new(1, -75, 0, 102)
-AimbotToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimbotToggle.TextSize = 12
-AimbotToggle.Font = Enum.Font.GothamBold
-AimbotToggle.Text = "ON"
-AimbotToggle.Parent = MainFrame
+-- Menu Toggle Button
+local MenuBtn = Instance.new("TextButton")
+MenuBtn.Name = "MenuBtn"
+MenuBtn.Size = UDim2.new(0, 45, 0, 45)
+MenuBtn.Position = UDim2.new(1, -50, 0, 2)
+MenuBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 80)
+MenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MenuBtn.TextSize = 20
+MenuBtn.Font = Enum.Font.GothamBold
+MenuBtn.Text = "−"
+MenuBtn.BorderSizePixel = 0
+MenuBtn.Parent = Header
 
--- Toggle ESP
-local ESPLabel = Instance.new("TextLabel")
-ESPLabel.Name = "ESPLabel"
-ESPLabel.Size = UDim2.new(0, 200, 0, 30)
-ESPLabel.Position = UDim2.new(0, 10, 0, 140)
-ESPLabel.BackgroundTransparency = 1
-ESPLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPLabel.TextSize = 14
-ESPLabel.Font = Enum.Font.Gotham
-ESPLabel.Text = "👁️ ESP"
-ESPLabel.TextXAlignment = Enum.TextXAlignment.Left
-ESPLabel.Parent = MainFrame
+local MenuCorner = Instance.new("UICorner")
+MenuCorner.CornerRadius = UDim.new(0, 6)
+MenuCorner.Parent = MenuBtn
 
-local ESPToggle = Instance.new("TextButton")
-ESPToggle.Name = "ESPToggle"
-ESPToggle.Size = UDim2.new(0, 60, 0, 25)
-ESPToggle.Position = UDim2.new(1, -75, 0, 142)
-ESPToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPToggle.TextSize = 12
-ESPToggle.Font = Enum.Font.GothamBold
-ESPToggle.Text = "ON"
-ESPToggle.Parent = MainFrame
+-- ==================== ABAS ====================
+local TabsFrame = Instance.new("Frame")
+TabsFrame.Name = "TabsFrame"
+TabsFrame.Size = UDim2.new(1, 0, 0, 40)
+TabsFrame.Position = UDim2.new(0, 0, 0, 50)
+TabsFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+TabsFrame.BorderSizePixel = 0
+TabsFrame.Parent = MainContainer
 
--- Platform Switch
-local PlatformLabel = Instance.new("TextLabel")
-PlatformLabel.Name = "PlatformLabel"
-PlatformLabel.Size = UDim2.new(0, 200, 0, 30)
-PlatformLabel.Position = UDim2.new(0, 10, 0, 180)
-PlatformLabel.BackgroundTransparency = 1
-PlatformLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlatformLabel.TextSize = 14
-PlatformLabel.Font = Enum.Font.Gotham
-PlatformLabel.Text = "🖥️ Modo"
-PlatformLabel.TextXAlignment = Enum.TextXAlignment.Left
-PlatformLabel.Parent = MainFrame
+local TabsLayout = Instance.new("UIListLayout")
+TabsLayout.FillDirection = Enum.FillDirection.Horizontal
+TabsLayout.Padding = UDim.new(0, 5)
+TabsLayout.Parent = TabsFrame
 
-local PlatformToggle = Instance.new("TextButton")
-PlatformToggle.Name = "PlatformToggle"
-PlatformToggle.Size = UDim2.new(0, 60, 0, 25)
-PlatformToggle.Position = UDim2.new(1, -75, 0, 182)
-PlatformToggle.BackgroundColor3 = Color3.fromRGB(100, 100, 200)
-PlatformToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlatformToggle.TextSize = 11
-PlatformToggle.Font = Enum.Font.GothamBold
-PlatformToggle.Text = Config.Platform
-PlatformToggle.Parent = MainFrame
+local AimbotTab = Instance.new("TextButton")
+AimbotTab.Name = "AimbotTab"
+AimbotTab.Size = UDim2.new(0, 160, 1, 0)
+AimbotTab.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
+AimbotTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotTab.TextSize = 14
+AimbotTab.Font = Enum.Font.GothamBold
+AimbotTab.Text = "⚔️ AIMBOT"
+AimbotTab.BorderSizePixel = 0
+AimbotTab.Parent = TabsFrame
 
--- Status Label
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Name = "StatusLabel"
-StatusLabel.Size = UDim2.new(1, -20, 0, 80)
-StatusLabel.Position = UDim2.new(0, 10, 0, 310)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-StatusLabel.TextSize = 12
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = "Status: Online\nAimbot: ON\nESP: ON"
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
-StatusLabel.Parent = MainFrame
+local AimbotCorner = Instance.new("UICorner")
+AimbotCorner.CornerRadius = UDim.new(0, 5)
+AimbotCorner.Parent = AimbotTab
 
--- ==================== FUNÇÕES DE UI ====================
-local function updateStatus()
-    local aimbotStatus = Config.AimbotEnabled and "ON" or "OFF"
-    local espStatus = Config.ESPEnabled and "ON" or "OFF"
+local ESPTab = Instance.new("TextButton")
+ESPTab.Name = "ESPTab"
+ESPTab.Size = UDim2.new(0, 160, 1, 0)
+ESPTab.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+ESPTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+ESPTab.TextSize = 14
+ESPTab.Font = Enum.Font.GothamBold
+ESPTab.Text = "👁️ ESP"
+ESPTab.BorderSizePixel = 0
+ESPTab.Parent = TabsFrame
+
+local ESPCorner = Instance.new("UICorner")
+ESPCorner.CornerRadius = UDim.new(0, 5)
+ESPCorner.Parent = ESPTab
+
+-- ==================== CONTEÚDO DAS ABAS ====================
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Size = UDim2.new(1, -10, 1, -100)
+ContentFrame.Position = UDim2.new(0, 5, 0, 95)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainContainer
+
+-- ========== ABA AIMBOT ==========
+local AimbotContent = Instance.new("Frame")
+AimbotContent.Name = "AimbotContent"
+AimbotContent.Size = UDim2.new(1, 0, 1, 0)
+AimbotContent.BackgroundTransparency = 1
+AimbotContent.Parent = ContentFrame
+AimbotContent.Visible = true
+
+local AimbotScroll = Instance.new("ScrollingFrame")
+AimbotScroll.Name = "AimbotScroll"
+AimbotScroll.Size = UDim2.new(1, 0, 1, 0)
+AimbotScroll.BackgroundTransparency = 1
+AimbotScroll.BorderSizePixel = 0
+AimbotScroll.ScrollBarThickness = 5
+AimbotScroll.Parent = AimbotContent
+
+local AimbotLayout = Instance.new("UIListLayout")
+AimbotLayout.Padding = UDim.new(0, 10)
+AimbotLayout.Parent = AimbotScroll
+
+-- Toggle Aimbot Principal
+local AimbotToggleLabel = Instance.new("TextLabel")
+AimbotToggleLabel.Name = "Label"
+AimbotToggleLabel.Size = UDim2.new(1, 0, 0, 30)
+AimbotToggleLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+AimbotToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotToggleLabel.TextSize = 13
+AimbotToggleLabel.Font = Enum.Font.Gotham
+AimbotToggleLabel.Text = "⚔️ Aimbot Principal"
+AimbotToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+AimbotToggleLabel.BorderSizePixel = 0
+AimbotToggleLabel.Parent = AimbotScroll
+
+local AimbotToggleLabelPadding = Instance.new("UIPadding")
+AimbotToggleLabelPadding.PaddingLeft = UDim.new(0, 10)
+AimbotToggleLabelPadding.Parent = AimbotToggleLabel
+
+local AimbotToggleCorner = Instance.new("UICorner")
+AimbotToggleCorner.CornerRadius = UDim.new(0, 5)
+AimbotToggleCorner.Parent = AimbotToggleLabel
+
+local AimbotMainToggle = Instance.new("TextButton")
+AimbotMainToggle.Name = "Toggle"
+AimbotMainToggle.Size = UDim2.new(0, 50, 0, 25)
+AimbotMainToggle.Position = UDim2.new(1, -60, 0.5, -12)
+AimbotMainToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+AimbotMainToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotMainToggle.TextSize = 12
+AimbotMainToggle.Font = Enum.Font.GothamBold
+AimbotMainToggle.Text = "ON"
+AimbotMainToggle.BorderSizePixel = 0
+AimbotMainToggle.Parent = AimbotToggleLabel
+
+local AimbotMainCorner = Instance.new("UICorner")
+AimbotMainCorner.CornerRadius = UDim.new(0, 4)
+AimbotMainCorner.Parent = AimbotMainToggle
+
+-- Aimbot Teleguiado
+local AimbotGuideLabel = Instance.new("TextLabel")
+AimbotGuideLabel.Name = "Label"
+AimbotGuideLabel.Size = UDim2.new(1, 0, 0, 30)
+AimbotGuideLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+AimbotGuideLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotGuideLabel.TextSize = 13
+AimbotGuideLabel.Font = Enum.Font.Gotham
+AimbotGuideLabel.Text = "🎯 Aimbot Teleguiado"
+AimbotGuideLabel.TextXAlignment = Enum.TextXAlignment.Left
+AimbotGuideLabel.BorderSizePixel = 0
+AimbotGuideLabel.Parent = AimbotScroll
+
+local AimbotGuideCorner = Instance.new("UICorner")
+AimbotGuideCorner.CornerRadius = UDim.new(0, 5)
+AimbotGuideCorner.Parent = AimbotGuideLabel
+
+local AimbotGuidePadding = Instance.new("UIPadding")
+AimbotGuidePadding.PaddingLeft = UDim.new(0, 10)
+AimbotGuidePadding.Parent = AimbotGuideLabel
+
+local AimbotGuideToggle = Instance.new("TextButton")
+AimbotGuideToggle.Name = "Toggle"
+AimbotGuideToggle.Size = UDim2.new(0, 50, 0, 25)
+AimbotGuideToggle.Position = UDim2.new(1, -60, 0.5, -12)
+AimbotGuideToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+AimbotGuideToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotGuideToggle.TextSize = 12
+AimbotGuideToggle.Font = Enum.Font.GothamBold
+AimbotGuideToggle.Text = "ON"
+AimbotGuideToggle.BorderSizePixel = 0
+AimbotGuideToggle.Parent = AimbotGuideLabel
+
+local AimbotGuideCorner2 = Instance.new("UICorner")
+AimbotGuideCorner2.CornerRadius = UDim.new(0, 4)
+AimbotGuideCorner2.Parent = AimbotGuideToggle
+
+-- Habilidades Delegadas
+local AbilitiesLabel = Instance.new("TextLabel")
+AbilitiesLabel.Name = "Label"
+AbilitiesLabel.Size = UDim2.new(1, 0, 0, 30)
+AbilitiesLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+AbilitiesLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+AbilitiesLabel.TextSize = 13
+AbilitiesLabel.Font = Enum.Font.Gotham
+AbilitiesLabel.Text = "⚡ Habilidades Delegadas"
+AbilitiesLabel.TextXAlignment = Enum.TextXAlignment.Left
+AbilitiesLabel.BorderSizePixel = 0
+AbilitiesLabel.Parent = AimbotScroll
+
+local AbilitiesCorner = Instance.new("UICorner")
+AbilitiesCorner.CornerRadius = UDim.new(0, 5)
+AbilitiesCorner.Parent = AbilitiesLabel
+
+local AbilitiesPadding = Instance.new("UIPadding")
+AbilitiesPadding.PaddingLeft = UDim.new(0, 10)
+AbilitiesPadding.Parent = AbilitiesLabel
+
+local AbilitiesToggle = Instance.new("TextButton")
+AbilitiesToggle.Name = "Toggle"
+AbilitiesToggle.Size = UDim2.new(0, 50, 0, 25)
+AbilitiesToggle.Position = UDim2.new(1, -60, 0.5, -12)
+AbilitiesToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+AbilitiesToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AbilitiesToggle.TextSize = 12
+AbilitiesToggle.Font = Enum.Font.GothamBold
+AbilitiesToggle.Text = "ON"
+AbilitiesToggle.BorderSizePixel = 0
+AbilitiesToggle.Parent = AbilitiesLabel
+
+local AbilitiesCorner2 = Instance.new("UICorner")
+AbilitiesCorner2.CornerRadius = UDim.new(0, 4)
+AbilitiesCorner2.Parent = AbilitiesToggle
+
+-- Lista de Habilidades
+for key, ability in pairs(AbilityKeys) do
+    local AbilityBtn = Instance.new("TextButton")
+    AbilityBtn.Name = "Ability_" .. key
+    AbilityBtn.Size = UDim2.new(1, 0, 0, 25)
+    AbilityBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    AbilityBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    AbilityBtn.TextSize = 12
+    AbilityBtn.Font = Enum.Font.Gotham
+    AbilityBtn.Text = "🎮 " .. key .. " - " .. ability.name
+    AbilityBtn.BorderSizePixel = 0
+    AbilityBtn.Parent = AimbotScroll
     
-    StatusLabel.Text = "Status: Online\nAimbot: " .. aimbotStatus .. "\nESP: " .. espStatus
-    
-    AimbotToggle.BackgroundColor3 = Config.AimbotEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
-    AimbotToggle.Text = Config.AimbotEnabled and "ON" or "OFF"
-    
-    ESPToggle.BackgroundColor3 = Config.ESPEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
-    ESPToggle.Text = Config.ESPEnabled and "ON" or "OFF"
-    
-    PlatformToggle.Text = Config.Platform
+    local AbilityCorner = Instance.new("UICorner")
+    AbilityCorner.CornerRadius = UDim.new(0, 4)
+    AbilityCorner.Parent = AbilityBtn
 end
 
--- ==================== EVENTOS DE UI ====================
-AimbotToggle.MouseButton1Click:Connect(function()
-    Config.AimbotEnabled = not Config.AimbotEnabled
-    updateStatus()
+-- Alcance do Aimbot
+local RangeLabel = Instance.new("TextLabel")
+RangeLabel.Name = "RangeLabel"
+RangeLabel.Size = UDim2.new(1, 0, 0, 30)
+RangeLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+RangeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+RangeLabel.TextSize = 12
+RangeLabel.Font = Enum.Font.Gotham
+RangeLabel.Text = "📏 Alcance: 100 studs"
+RangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+RangeLabel.BorderSizePixel = 0
+RangeLabel.Parent = AimbotScroll
+
+local RangeCorner = Instance.new("UICorner")
+RangeCorner.CornerRadius = UDim.new(0, 5)
+RangeCorner.Parent = RangeLabel
+
+local RangePadding = Instance.new("UIPadding")
+RangePadding.PaddingLeft = UDim.new(0, 10)
+RangePadding.Parent = RangeLabel
+
+-- ========== ABA ESP ==========
+local ESPContent = Instance.new("Frame")
+ESPContent.Name = "ESPContent"
+ESPContent.Size = UDim2.new(1, 0, 1, 0)
+ESPContent.BackgroundTransparency = 1
+ESPContent.Parent = ContentFrame
+ESPContent.Visible = false
+
+local ESPScroll = Instance.new("ScrollingFrame")
+ESPScroll.Name = "ESPScroll"
+ESPScroll.Size = UDim2.new(1, 0, 1, 0)
+ESPScroll.BackgroundTransparency = 1
+ESPScroll.BorderSizePixel = 0
+ESPScroll.ScrollBarThickness = 5
+ESPScroll.Parent = ESPContent
+
+local ESPLayout = Instance.new("UIListLayout")
+ESPLayout.Padding = UDim.new(0, 10)
+ESPLayout.Parent = ESPScroll
+
+-- Toggle ESP Principal
+local ESPToggleLabel = Instance.new("TextLabel")
+ESPToggleLabel.Name = "Label"
+ESPToggleLabel.Size = UDim2.new(1, 0, 0, 30)
+ESPToggleLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+ESPToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPToggleLabel.TextSize = 13
+ESPToggleLabel.Font = Enum.Font.Gotham
+ESPToggleLabel.Text = "👁️ ESP Principal"
+ESPToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+ESPToggleLabel.BorderSizePixel = 0
+ESPToggleLabel.Parent = ESPScroll
+
+local ESPToggleLabelPadding = Instance.new("UIPadding")
+ESPToggleLabelPadding.PaddingLeft = UDim.new(0, 10)
+ESPToggleLabelPadding.Parent = ESPToggleLabel
+
+local ESPToggleLabelCorner = Instance.new("UICorner")
+ESPToggleLabelCorner.CornerRadius = UDim.new(0, 5)
+ESPToggleLabelCorner.Parent = ESPToggleLabel
+
+local ESPMainToggle = Instance.new("TextButton")
+ESPMainToggle.Name = "Toggle"
+ESPMainToggle.Size = UDim2.new(0, 50, 0, 25)
+ESPMainToggle.Position = UDim2.new(1, -60, 0.5, -12)
+ESPMainToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+ESPMainToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPMainToggle.TextSize = 12
+ESPMainToggle.Font = Enum.Font.GothamBold
+ESPMainToggle.Text = "ON"
+ESPMainToggle.BorderSizePixel = 0
+ESPMainToggle.Parent = ESPToggleLabel
+
+local ESPMainCorner = Instance.new("UICorner")
+ESPMainCorner.CornerRadius = UDim.new(0, 4)
+ESPMainCorner.Parent = ESPMainToggle
+
+-- Alcance do ESP
+local ESPRangeLabel = Instance.new("TextLabel")
+ESPRangeLabel.Name = "RangeLabel"
+ESPRangeLabel.Size = UDim2.new(1, 0, 0, 30)
+ESPRangeLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+ESPRangeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPRangeLabel.TextSize = 12
+ESPRangeLabel.Font = Enum.Font.Gotham
+ESPRangeLabel.Text = "📏 Alcance: 150 studs"
+ESPRangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+ESPRangeLabel.BorderSizePixel = 0
+ESPRangeLabel.Parent = ESPScroll
+
+local ESPRangeCorner = Instance.new("UICorner")
+ESPRangeCorner.CornerRadius = UDim.new(0, 5)
+ESPRangeCorner.Parent = ESPRangeLabel
+
+local ESPRangePadding = Instance.new("UIPadding")
+ESPRangePadding.PaddingLeft = UDim.new(0, 10)
+ESPRangePadding.Parent = ESPRangeLabel
+
+-- Inimigos Detectados
+local EnemiesLabel = Instance.new("TextLabel")
+EnemiesLabel.Name = "EnemiesLabel"
+EnemiesLabel.Size = UDim2.new(1, 0, 0, 30)
+EnemiesLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+EnemiesLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+EnemiesLabel.TextSize = 12
+EnemiesLabel.Font = Enum.Font.Gotham
+EnemiesLabel.Text = "👥 Inimigos: 0"
+EnemiesLabel.TextXAlignment = Enum.TextXAlignment.Left
+EnemiesLabel.BorderSizePixel = 0
+EnemiesLabel.Parent = ESPScroll
+
+local EnemiesCorner = Instance.new("UICorner")
+EnemiesCorner.CornerRadius = UDim.new(0, 5)
+EnemiesCorner.Parent = EnemiesLabel
+
+local EnemiesPadding = Instance.new("UIPadding")
+EnemiesPadding.PaddingLeft = UDim.new(0, 10)
+EnemiesPadding.Parent = EnemiesLabel
+
+-- ==================== GERENCIAMENTO DE ABAS ====================
+local function selectTab(tabName)
+    Config.SelectedTab = tabName
+    
+    if tabName == "aimbot" then
+        AimbotContent.Visible = true
+        ESPContent.Visible = false
+        AimbotTab.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
+        AimbotTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ESPTab.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        ESPTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    else
+        AimbotContent.Visible = false
+        ESPContent.Visible = true
+        AimbotTab.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        AimbotTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+        ESPTab.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
+        ESPTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end
+
+AimbotTab.MouseButton1Click:Connect(function()
+    selectTab("aimbot")
 end)
 
-ESPToggle.MouseButton1Click:Connect(function()
-    Config.ESPEnabled = not Config.ESPEnabled
-    updateStatus()
+ESPTab.MouseButton1Click:Connect(function()
+    selectTab("esp")
 end)
 
-PlatformToggle.MouseButton1Click:Connect(function()
-    Config.Platform = Config.Platform == "PC" and "MOBILE" or "PC"
-    print("[⚔️ DIVINO FRUTS] Modo alterado para: " .. Config.Platform)
-    updateStatus()
+-- Menu Toggle
+local guiVisible = true
+MenuBtn.MouseButton1Click:Connect(function()
+    guiVisible = not guiVisible
+    AimbotContent.Parent.Parent.Visible = guiVisible
+    if guiVisible then
+        MenuBtn.Text = "−"
+    else
+        MenuBtn.Text = "+"
+    end
 end)
 
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-    print("[⚔️ DIVINO FRUTS] Script desativado!")
-end)
-
--- ==================== AIMBOT ====================
+-- ==================== FUNÇÕES DO AIMBOT ====================
 local function getClosestPlayer()
     local closestPlayer = nil
     local closestDistance = math.huge
@@ -220,7 +491,7 @@ local function getClosestPlayer()
     for _, targetPlayer in pairs(Players:GetPlayers()) do
         if targetPlayer ~= player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
             local distance = (targetPlayer.Character.Head.Position - player.Character.Head.Position).Magnitude
-            if distance < closestDistance and distance <= Config.ESPDistance then
+            if distance < closestDistance and distance <= Config.AimbotRange then
                 closestDistance = distance
                 closestPlayer = targetPlayer
             end
@@ -230,104 +501,77 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-local function aimbot()
-    if not Config.AimbotEnabled or not player.Character or not player.Character:FindFirstChild("Head") then
-        return
-    end
-    
-    local targetPlayer = getClosestPlayer()
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
-        local targetPosition = targetPlayer.Character.Head.Position
-        local direction = (targetPosition - Camera.CFrame.Position).Unit
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
-    end
-end
+local aimbotEnabled = true
+local aimbotGuideEnabled = true
+local abilitiesEnabled = true
 
--- ==================== ESP ====================
-local espPlayers = {}
-
-local function createESP(targetPlayer)
-    if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("Head") then
-        return
-    end
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESP_" .. targetPlayer.Name
-    billboard.Adornee = targetPlayer.Character.Head
-    billboard.MaxDistance = Config.ESPDistance
-    billboard.Size = UDim2.new(0, 100, 0, 50)
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.BackgroundTransparency = 0
-    textLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.TextSize = 14
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Text = targetPlayer.Name
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.Parent = billboard
-    
-    billboard.Parent = targetPlayer.Character.Head
-    espPlayers[targetPlayer.Name] = billboard
-end
-
-local function removeESP(playerName)
-    if espPlayers[playerName] then
-        espPlayers[playerName]:Destroy()
-        espPlayers[playerName] = nil
-    end
-end
-
-local function updateESP()
-    if not Config.ESPEnabled then
-        for playerName, _ in pairs(espPlayers) do
-            removeESP(playerName)
-        end
-        return
-    end
-    
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= player then
-            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
-                if not espPlayers[targetPlayer.Name] then
-                    createESP(targetPlayer)
-                end
-            else
-                removeESP(targetPlayer.Name)
-            end
-        end
-    end
-end
-
--- ==================== CLEANUP EVENTOS ====================
-Players.PlayerRemoving:Connect(function(leftPlayer)
-    removeESP(leftPlayer.Name)
+AimbotMainToggle.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    AimbotMainToggle.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    AimbotMainToggle.Text = aimbotEnabled and "ON" or "OFF"
 end)
 
--- ==================== LOOP PRINCIPAL ====================
-RunService.RenderStepped:Connect(function()
-    if Config.Enabled then
-        if Config.AimbotEnabled then
-            aimbot()
-        end
-        updateESP()
-    end
+AimbotGuideToggle.MouseButton1Click:Connect(function()
+    aimbotGuideEnabled = not aimbotGuideEnabled
+    AimbotGuideToggle.BackgroundColor3 = aimbotGuideEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    AimbotGuideToggle.Text = aimbotGuideEnabled and "ON" or "OFF"
 end)
 
--- ==================== KEYBOARD SHORTCUTS ====================
+AbilitiesToggle.MouseButton1Click:Connect(function()
+    abilitiesEnabled = not abilitiesEnabled
+    AbilitiesToggle.BackgroundColor3 = abilitiesEnabled and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    AbilitiesToggle.Text = abilitiesEnabled and "ON" or "OFF"
+end)
+
+-- ==================== AIMBOT TELEGUIADO ====================
+local function useAbilityOnTarget(abilityKey)
+    if not abilitiesEnabled or not aimbotGuideEnabled then return end
+    
+    local target = getClosestPlayer()
+    if target and target.Character and target.Character:FindFirstChild("Head") then
+        Config.TargetPlayer = target
+        print("[⚔️ DIVINO FRUTS] Habilidade " .. abilityKey .. " ativada em: " .. target.Name)
+        -- Aqui você adiciona a lógica real da habilidade
+        -- Exemplo: aim na cabeça do alvo
+        if player.Character and player.Character:FindFirstChild("Head") then
+            local direction = (target.Character.Head.Position - player.Character.Head.Position).Unit
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+        end
+    end
+end
+
+-- ==================== HOTKEYS DAS HABILIDADES ====================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    if input.KeyCode == Enum.KeyCode.F1 then
-        MainFrame.Visible = not MainFrame.Visible
+    local keyName = input.KeyCode.Name
+    
+    if keyName == "Z" or keyName == "X" or keyName == "C" or keyName == "V" or keyName == "F" then
+        useAbilityOnTarget(keyName)
     end
     
-    if input.KeyCode == Enum.KeyCode.F2 then
-        Config.Enabled = not Config.Enabled
-        print("[⚔️ DIVINO FRUTS] Script " .. (Config.Enabled and "ativado" or "desativado"))
+    -- Toggle da UI com M
+    if keyName == "M" then
+        guiVisible = not guiVisible
+        AimbotContent.Parent.Parent.Visible = guiVisible
+        MenuBtn.Text = guiVisible and "−" or "+"
+    end
+end)
+
+-- ==================== LOOP DO AIMBOT ====================
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled and player.Character and player.Character:FindFirstChild("Head") then
+        local target = getClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            Config.TargetPlayer = target
+            -- Aimbot suave
+            local targetPos = target.Character.Head.Position
+            local direction = (targetPos - Camera.CFrame.Position).Unit
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction), 0.1)
+        end
     end
 end)
 
 print("[⚔️ DIVINO FRUTS] Script carregado com sucesso!")
-print("[⚔️ DIVINO FRUTS] Pressione F1 para abrir/fechar a interface")
-print("[⚔️ DIVINO FRUTS] Pressione F2 para ativar/desativar o script")
+print("[⚔️ DIVINO FRUTS] Pressione M para abrir/fechar a interface")
+print("[⚔️ DIVINO FRUTS] Pressione Z, X, C, V ou F para usar habilidades")
